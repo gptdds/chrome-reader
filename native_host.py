@@ -19,6 +19,7 @@ EXTENSION_IDS = frozenset((
     "bniddmggmkjihhheddfjnjeggfhojmgo",
     "dalmdgpohkfpclknkcfpeifdminlijic",
     "bogojjhkpeiabadplnpfchgafbnekogd",
+    "jmmdgnnehdfmkdlelnpmpoigeeenkhjj",
 ))
 ALLOWED_ORIGINS = frozenset(f"chrome-extension://{i}/" for i in EXTENSION_IDS)
 HEALTH_URL = "http://127.0.0.1:18765/health"
