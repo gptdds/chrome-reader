@@ -636,6 +636,21 @@
     return {url: url.href};
   }
 
+  // Alt+click on captured text marks where reading should start. The panel
+  // receives the sentence index and "从此处开始" begins from it.
+  window.addEventListener('click', event => {
+    if (!event.altKey || !snapshot) return;
+    if (ownElement(event.target)) return;
+    const range = document.caretRangeFromPoint(event.clientX, event.clientY);
+    if (!range || !range.startContainer || range.startContainer.nodeType !== Node.TEXT_NODE) return;
+    const node = range.startContainer;
+    const offset = range.startOffset;
+    const seg = snapshot.segments.find(s => s.node === node && offset >= s.from && offset <= s.to);
+    if (!seg) return;
+    const index = seg.start + (offset - seg.from);
+    try { chrome.runtime.sendMessage({action: 'xiaoxiao-set-start', index}).catch(() => {}); } catch {}
+  }, true);
+
   window.__xiaoxiaoReader = {version: 1};
   chrome.runtime.onMessage.addListener(listener);
   window.addEventListener('scroll', scheduleLayout, {capture: true, passive: true});

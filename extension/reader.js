@@ -7,6 +7,7 @@ let highlightKey = '', highlightSequence = 0, lastHighlight = null;
 let preloaded = null;
 let serviceStartPromise = null, healthSequence = 0;
 let currentParts = [];
+let pendingStartIndex = null;
 let currentIndex = -1;
 function serviceStatus(text, state) {
   $('serviceStatus').textContent = text;
@@ -310,9 +311,16 @@ function playFromCaret() {
   // Recompute so caret offsets always match the current textarea content.
   currentParts = splitText($('text').value);
   if (!currentParts.length) { status('请先读取网页或粘贴文字。', true); return; }
-  const field = $('text');
-  const caret = Math.max(0, Math.min(field.selectionStart || 0, field.value.length));
-  const index = sentenceIndexAt(caret);
+  let index;
+  if (Number.isInteger(pendingStartIndex) && pendingStartIndex >= 0 && pendingStartIndex < currentParts.length) {
+    index = pendingStartIndex;
+    pendingStartIndex = null;
+  } else {
+    pendingStartIndex = null;
+    const field = $('text');
+    const caret = Math.max(0, Math.min(field.selectionStart || 0, field.value.length));
+    index = sentenceIndexAt(caret);
+  }
   const preview = currentParts[index].text;
   status(`将从第 ${index + 1} / ${currentParts.length} 句开始：${preview.slice(0, 24)}${preview.length > 24 ? '…' : ''}`);
   play(index);
@@ -429,6 +437,7 @@ $('text').addEventListener('input', () => {
 async function showArticle(article, options = {}) {
   if (!article || displayedArticle === article.id) return;
   displayedArticle = article.id;
+  pendingStartIndex = null;
   stop();
   if (article.error) { source = null; status(article.error, true); return; }
   source = article;
@@ -451,6 +460,12 @@ async function continueQueue() {
   await showArticle(next);
   return true;
 }
+chrome.runtime.onMessage.addListener(message => {
+  if (message?.action === 'xiaoxiao-start-index' && Number.isInteger(message.index) && message.index >= 0) {
+    pendingStartIndex = message.index;
+    status(`已在网页中定位到第 ${message.index + 1} 句，点击“从此处开始”从这里朗读。`);
+  }
+});
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local' || !changes.article) return;
   const article = changes.article.newValue;

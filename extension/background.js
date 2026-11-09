@@ -117,6 +117,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })().catch(error => sendResponse({error: error.message}));
     return true;
   }
+  if (message?.action === 'xiaoxiao-set-start') {
+    if (!Number.isInteger(message.index) || message.index < 0) { sendResponse({ok: false}); return; }
+    chrome.runtime.sendMessage({action: 'xiaoxiao-start-index', index: message.index}).catch(() => {});
+    sendResponse({ok: true});
+    return;
+  }
   if (message?.action === 'nextArticle') {
     if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL('reader.html')) {
       sendResponse({ok: false, error: '仅允许本扩展的朗读侧栏载入下一篇。'});
