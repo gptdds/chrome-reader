@@ -266,10 +266,10 @@ async function play(startAt = 0) {
     } finally {
       cancelAnimationFrame(highlightFrame);
       media.pause(); media.src = '';
-      if (audio === media) {
-        audio = null;
-        refreshHighlight();
-      }
+      // Do NOT reset follow state between sentences: tearing audio down here
+      // sent follow:false at every sentence boundary, freezing the highlight
+      // for the inter-sentence gap. audio is replaced by the next part at once.
+      if (audio === media) audio = null;
       URL.revokeObjectURL(objectUrl);
     }
     return true;
@@ -287,6 +287,7 @@ async function play(startAt = 0) {
     }
     if (session === id) {
       active = false;
+      refreshHighlight();  // release follow now that playback truly ended
       status('朗读完成');
       // Automatically continue with the next preloaded article, if any.
       if (preloaded?.text) await continueQueue();
