@@ -367,7 +367,7 @@ $('loadNext').addEventListener('click', loadNextArticle);
 async function readInNewTab() {
   status('正在新页面打开并读取当前网页…');
   const response = await chrome.runtime.sendMessage({action: 'readInNewTab', url: source?.source || ''}).catch(error => ({error: error.message}));
-  if (response?.ok === true) { status('已在新页面载入本文，朗读与高亮都在新页面进行，原页面未改动。'); return; }
+  if (response?.ok === true) { status('已把本文摘录到新页面，排版结构不变；朗读与高亮已在新页面开始，原页面未改动。'); return; }
   status(response?.error || '新页面朗读失败。', true);
 }
 $('readNewTab').addEventListener('click', readInNewTab);

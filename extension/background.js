@@ -61,50 +61,51 @@ async function load(tab, selectionOnly = false, fullPage = false) {
 function sameOrigin(next, current) {
   try { return new URL(next).origin === new URL(current).origin; } catch { return false; }
 }
-// Read-in-new-page mode: open the same URL in a fresh tab (identical layout
-// by construction), capture and read there, leaving the original tab alone.
-let newTab = null;
-async function loadInNewTab(tab, requestedUrl) {
-  // Prefer the article's own source URL: the panel always knows it, so this
-  // never depends on which window/tab currently has focus.
+// Reader-view mode: extract the article as sanitized HTML and show it on a
+// clean extension page. Structure (headings, paragraphs, lists, images) is
+// preserved; the original site page is never modified.
+let readerTab = null;
+async function openReaderView(requestedUrl) {
+  const [active] = await chrome.tabs.query({active: true, lastFocusedWindow: true});
   const targetUrl = (requestedUrl && /^https?:/.test(requestedUrl)) ? requestedUrl
-    : (tab?.url && /^https?:/.test(tab.url) ? tab.url : null);
-  if (!targetUrl) {
-    throw new Error('请先读取一个普通网页，再使用新页面朗读。');
-  }
-  const {captureScope} = await chrome.storage.local.get('captureScope');
-  const fullPage = captureScope === 'full';
-  let target = newTab;
-  if (!target || target.url !== targetUrl) {
-    if (target) chrome.tabs.remove(target.tabId).catch(() => {});
-    target = null;
-    const created = await chrome.tabs.create({url: targetUrl, active: true});
-    target = {tabId: created.id, url: targetUrl};
-    await new Promise(resolve => {
-      const until = Date.now() + 15000;
-      const check = () => chrome.tabs.get(created.id).then(info => {
-        if (info.status === 'complete' || Date.now() > until) resolve();
-        else setTimeout(check, 150);
-      }).catch(() => resolve());
-      check();
-    });
+    : (active?.url && /^https?:/.test(active.url) ? active.url : null);
+  if (!targetUrl) throw new Error('请先读取一个普通网页，再使用新页面朗读。');
+  const tabs = await chrome.tabs.query({url: targetUrl.split('#')[0] + '*'});
+  const source = tabs.find(t => t.id === active?.id) || tabs[0];
+  if (!source) throw new Error('没有找到来源网页标签，请重新读取网页。');
+  await chrome.scripting.executeScript({target: {tabId: source.id}, files: ['content.js']});
+  const extract = await chrome.tabs.sendMessage(source.id, {action: 'xiaoxiao-extract-html'});
+  if (extract?.error) throw new Error(extract.error);
+  if (!extract?.html) throw new Error('没有摘录到正文。');
+  await chrome.storage.local.set({readerView: {html: extract.html, title: extract.title, from: targetUrl, at: Date.now()}});
+  if (readerTab) chrome.tabs.remove(readerTab).catch(() => {});
+  const created = await chrome.tabs.create({url: chrome.runtime.getURL('reader-view.html')});
+  readerTab = created.id;
+  await new Promise(resolve => {
+    const until = Date.now() + 15000;
+    const check = () => chrome.tabs.get(created.id).then(info => {
+      if (info.status === 'complete' || Date.now() > until) resolve();
+      else setTimeout(check, 150);
+    }).catch(() => resolve());
+    check();
+  });
+  let data = null;
+  for (let i = 0; i < 10; i++) {
+    try {
+      data = await chrome.tabs.sendMessage(created.id, {action: 'xiaoxiao-capture'});
+      if (data && !data.error && data.text && data.text.trim()) break;
+      data = null;
+    } catch { data = null; }
     await new Promise(r => setTimeout(r, 400));
   }
-  newTab = target;
-  try {
-    await chrome.scripting.executeScript({target: {tabId: target.tabId}, files: ['content.js']});
-    const data = await chrome.tabs.sendMessage(target.tabId, {action: 'xiaoxiao-capture', fullPage});
-    if (data?.error) throw new Error(data.error);
-    if (!data?.text?.trim()) throw new Error('新页面没有读取到正文。');
-    await chrome.storage.local.set({article: {...data, id: crypto.randomUUID(),
-      requestedAt: Date.now(), sourceTabId: target.tabId}});
-    return true;
-  } catch (error) {
-    // A dead or unreadable clone is closed; the original tab was never touched.
-    chrome.tabs.remove(target.tabId).catch(() => {});
-    newTab = null;
-    throw error;
+  if (!data) {
+    chrome.tabs.remove(created.id).catch(() => {});
+    readerTab = null;
+    throw new Error('新页面内容尚未就绪，请重试。');
   }
+  await chrome.storage.local.set({article: {...data, id: crypto.randomUUID(),
+    requestedAt: Date.now(), sourceTabId: created.id}});
+  return true;
 }
 
 // For sites with pagination or a next-article link, preload the following
@@ -176,8 +177,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
     (async () => {
-      const [tab] = await chrome.tabs.query({active: true, lastFocusedWindow: true});
-      await loadInNewTab(tab, typeof message.url === 'string' ? message.url : '');
+      await openReaderView(typeof message.url === 'string' ? message.url : '');
       sendResponse({ok: true});
     })().catch(error => sendResponse({ok: false, error: error.message}));
     return true;

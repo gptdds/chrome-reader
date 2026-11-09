@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>朗读视图</title>
+<style>
+:root{color-scheme:light dark}
+body{margin:0;padding:48px 20px 80px;background:#f7f6f2;color:#1d2530;font:16px/1.95 "Microsoft YaHei",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){body{background:#151a22;color:#dbe2ec}}
+main{max-width:760px;margin:0 auto;overflow-wrap:break-word}
+h1,h2,h3,h4,h5,h6{line-height:1.45;margin:1.6em 0 .6em}
+p{margin:.9em 0}
+img{max-width:100%;height:auto}
+a{color:#0a66c2}
+blockquote{margin:1em 0;padding:.4em 1em;border-left:4px solid #b9c2cf;color:#5a6675}
+pre{overflow:auto;padding:12px;background:#eceae4;border-radius:8px;font-size:13px}
+table{border-collapse:collapse;width:100%}
+td,th{border:1px solid #c9cfda;padding:6px 10px}
+figure{margin:1em 0;text-align:center}
+#rv-wait{text-align:center;color:#8892a0;margin-top:40vh;font-size:15px}
+::highlight(xiaoxiao-current){background-color:#ffe15a;color:#111;text-shadow:none}
+</style></head>
+<body>
+<div id="rv-wait">正在准备朗读视图…</div>
+<article id="rv-root" hidden></article>
+<script src="content.js"></script>
+<script>
+(async () => {
+  const {readerView} = await chrome.storage.local.get('readerView');
+  const root = document.getElementById('rv-root');
+  const wait = document.getElementById('rv-wait');
+  if (!readerView || !readerView.html) {
+    wait.textContent = '没有可显示的内容。请先在侧栏读取网页，再点“新页面朗读”。';
+    return;
+  }
+  root.innerHTML = readerView.html;
+  document.title = readerView.title || '朗读视图';
+  root.hidden = false;
+  wait.remove();
+})();
+</script>
+</body></html>

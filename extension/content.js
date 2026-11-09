@@ -640,6 +640,7 @@
           response = {ok: true, documentId: snapshot?.documentId || null};
           break;
         case 'xiaoxiao-status': response = status(); break;
+        case 'xiaoxiao-extract-html': response = extractHtml(); break;
         default: return false;
       }
       sendResponse(response);
@@ -649,6 +650,39 @@
     // All responses are synchronous; returning true would leave an unused port.
     return false;
   };
+
+  // Pull the article subtree out as sanitized HTML for the reader view:
+  // scripts/styles/events stripped, links and images absolutized.
+  function extractHtml() {
+    const candidates = [...document.querySelectorAll('article'), ...document.querySelectorAll('main'), document.body];
+    let root = null;
+    for (const c of candidates) {
+      if (c && c.textContent.trim().length > 200) { root = c; break; }
+    }
+    if (!root) root = document.body;
+    const clone = root.cloneNode(true);
+    clone.querySelectorAll('script,style,link,iframe,object,embed,noscript,svg,canvas,template,dialog,form,input,button,select,textarea,video,audio').forEach(el => el.remove());
+    clone.querySelectorAll('*').forEach(el => {
+      for (const attr of [...el.attributes]) {
+        const name = attr.name.toLowerCase();
+        if (name.startsWith('on') || name === 'style' || name === 'class' || name === 'id' || name === 'srcset' || name.startsWith('data-')) el.removeAttribute(attr.name);
+      }
+      if (el.tagName === 'A' && el.getAttribute('href')) {
+        try { el.setAttribute('href', new URL(el.getAttribute('href'), location.href).href); } catch { el.removeAttribute('href'); }
+      }
+      if (el.tagName === 'IMG') {
+        const src = el.getAttribute('src');
+        if (src) {
+          try { el.setAttribute('src', new URL(src, location.href).href); }
+          catch { el.removeAttribute('src'); }
+        }
+      }
+    });
+    const html = clone.outerHTML;
+    if (html.length > 2000000) throw new Error('页面内容过大，无法摘录到新页面。');
+    if (!clone.textContent.trim()) throw new Error('没有可摘录的正文。');
+    return {title: document.title, html};
+  }
 
   function nextLink() {
     const rel = document.querySelector('link[rel~="next"][href], a[rel~="next"][href]');
