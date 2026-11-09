@@ -399,9 +399,16 @@ $('pause').addEventListener('click', () => {
     status('继续朗读…');
   }
 });
+function captureScopeFull() {
+  return document.getElementById('captureScope').value === 'full';
+}
+$('captureScope').addEventListener('change', () => {
+  chrome.storage.local.set({captureScope: document.getElementById('captureScope').value});
+  status(captureScopeFull() ? '完整页面模式：将按页面顺序朗读全部可见文字，排版不变。' : '正文优先模式：优先读取文章主体。');
+});
 $('capture').addEventListener('click', async () => {
   status('正在读取当前网页…');
-  const response = await chrome.runtime.sendMessage({action: 'capture'}).catch(error => ({error: error.message}));
+  const response = await chrome.runtime.sendMessage({action: 'capture', fullPage: captureScopeFull()}).catch(error => ({error: error.message}));
   if (response?.error) status(response.error, true);
 });
 // Multi-article sites: preload the following article so the reader can chain it.
@@ -474,10 +481,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
   showArticle(article);
 });
 (async () => {
-  const settings = await chrome.storage.local.get(['article', 'playbackSpeed', 'highlightMode', 'followReading']);
+  const settings = await chrome.storage.local.get(['article', 'playbackSpeed', 'highlightMode', 'followReading', 'captureScope']);
   if (settings.playbackSpeed) setSpeed(settings.playbackSpeed, false);
   if (['line', 'paragraph', 'character', 'off'].includes(settings.highlightMode)) $('highlightMode').value = settings.highlightMode;
   $('follow').checked = settings.followReading !== false;
+  if (settings.captureScope === 'full') document.getElementById('captureScope').value = 'full';
   await checkHealth();
   const article = settings.article;
   if (article?.text && displayedArticle !== article.id) {

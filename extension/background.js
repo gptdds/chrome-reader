@@ -40,19 +40,19 @@ chrome.runtime.onInstalled.addListener(async () => {
   await chrome.contextMenus.removeAll();
   chrome.contextMenus.create({id: MENU, title: '用晓晓朗读选中文字', contexts: ['selection']});
 });
-async function capture(tab, selectionOnly = false) {
+async function capture(tab, selectionOnly = false, fullPage = false) {
   if (!tab?.id || !/^https?:/.test(tab.url || '')) {
     throw new Error('请切回普通网页后再点击朗读。Chrome 内部页和扩展商店不允许读取。');
   }
   await chrome.scripting.executeScript({target: {tabId: tab.id}, files: ['content.js']});
-  const data = await chrome.tabs.sendMessage(tab.id, {action: 'xiaoxiao-capture', selectionOnly});
+  const data = await chrome.tabs.sendMessage(tab.id, {action: 'xiaoxiao-capture', selectionOnly, fullPage});
   if (data?.error) throw new Error(data.error);
   if (!data?.text?.trim()) throw new Error('没有读取到文字。请先在网页中选中一段正文。');
   return {...data, sourceTabId: tab.id};
 }
-async function load(tab, selectionOnly = false) {
+async function load(tab, selectionOnly = false, fullPage = false) {
   try {
-    const data = await capture(tab, selectionOnly);
+    const data = await capture(tab, selectionOnly, fullPage);
     await chrome.storage.local.set({article: {...data, id: crypto.randomUUID(), requestedAt: Date.now()}});
   } catch (error) {
     await chrome.storage.local.set({article: {id: crypto.randomUUID(), error: error.message}});
@@ -91,9 +91,10 @@ async function loadNext(tab) {
   }
   return true;
 }
-chrome.action.onClicked.addListener(tab => {
+chrome.action.onClicked.addListener(async tab => {
   chrome.sidePanel.open({windowId: tab.windowId}).catch(console.error);
-  load(tab);
+  const {captureScope} = await chrome.storage.local.get('captureScope');
+  load(tab, false, captureScope === 'full');
 });
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== MENU) return;
@@ -112,7 +113,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.action === 'capture') {
     (async () => {
       const [tab] = await chrome.tabs.query({active: true, lastFocusedWindow: true});
-      await load(tab);
+      await load(tab, message.selectionOnly === true, message.fullPage === true);
       sendResponse({ok: true});
     })().catch(error => sendResponse({error: error.message}));
     return true;

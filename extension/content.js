@@ -139,7 +139,7 @@
     return {text: pieces.join(''), segments, truncated};
   }
 
-  function capture(selectionOnly) {
+  function capture(selectionOnly, fullPage) {
     const selection = window.getSelection();
     let selectedRange = null;
     if (selection && selection.rangeCount && !selection.isCollapsed) {
@@ -151,6 +151,9 @@
       const common = selectedRange.commonAncestorContainer;
       const root = common.nodeType === Node.TEXT_NODE ? common.parentNode : common;
       result = captureTree(root, selectedRange);
+    } else if (fullPage) {
+      // Full-page mode: every visible text node in DOM order, layout untouched.
+      result = captureTree(document.body, null);
     } else {
       const candidates = [...document.querySelectorAll('article'), ...document.querySelectorAll('main'), document.body];
       for (const root of candidates) {
@@ -606,7 +609,7 @@
     try {
       let response;
       switch (message.action) {
-        case 'xiaoxiao-capture': response = capture(message.selectionOnly === true); break;
+        case 'xiaoxiao-capture': response = capture(message.selectionOnly === true, message.fullPage === true); break;
         case 'xiaoxiao-highlight': response = highlight(message); break;
         case 'xiaoxiao-clear':
           if (message.documentId !== undefined) requireDocument(message.documentId);
