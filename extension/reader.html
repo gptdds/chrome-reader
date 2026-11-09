@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>晓晓朗读</title><link rel="stylesheet" href="reader.css"></head>
+<body><header><span class="badge">EDGE TTS · 本机连接</span><h1>晓晓朗读</h1><p>选中文字，点击工具栏图标即可朗读。</p></header>
+<main>
+<section class="service-panel" aria-label="本机语音服务"><div id="serviceStatus" role="status" aria-live="polite" data-state="checking">正在检查本机语音服务…</div><button id="startService" type="button">启动本机服务</button><p class="service-hint">首次使用需运行 install-native-host.cmd 安装启动桥接。启动成功后点击“播放”继续。</p></section>
+<div id="status" role="status" aria-live="polite">正在连接本机语音服务…</div>
+<div class="toolbar"><button id="capture">读取当前网页</button><button id="loadNext" title="载入后续文章，读完自动继续">载入下一篇</button><button id="previous" title="上一句">◀ 上一句</button><button id="play" class="primary">播放</button><button id="next" title="下一句">下一句 ▶</button><button id="pause">暂停</button><button id="stop">停止</button></div>
+<label for="rate">播放倍速 <output id="rateLabel">1×</output></label><input id="rate" type="range" min="0.5" max="3" step="0.05" value="1" aria-label="播放倍速">
+<div id="speedButtons" class="speeds" aria-label="快捷倍速"><button type="button" data-speed="1" aria-pressed="true">1×</button><button type="button" data-speed="1.25" aria-pressed="false">1.25×</button><button type="button" data-speed="1.5" aria-pressed="false">1.5×</button><button type="button" data-speed="2" aria-pressed="false">2×</button><button type="button" data-speed="3" aria-pressed="false">3×</button></div><p class="speed-hint">播放中切换立即生效，保留原音调。</p>
+<label for="voice">音色</label><select id="voice"><option value="zh-CN-XiaoxiaoNeural">晓晓 · 普通话女声</option><option value="zh-CN-YunxiNeural">云希 · 普通话男声</option></select>
+<label for="highlightMode">网页同步高亮</label><select id="highlightMode"><option value="line">按行高亮</option><option value="paragraph">按段落高亮</option><option value="character">按字高亮</option><option value="off">关闭高亮</option></select>
+<label class="follow"><input id="follow" type="checkbox" checked> 播放时跟踪高亮</label><p class="speed-hint">播放时保持朗读位置在视野内；暂停后停止跟随，可自由滚动，继续播放后恢复。</p><p id="highlightStatus" class="speed-hint" role="status">从网页读取后可同步高亮原文。</p>
+<h2 id="title">也可以粘贴文字</h2><textarea id="text" placeholder="在这里粘贴文字，然后点击播放…" aria-label="朗读文字"></textarea>
+<p id="progress"></p><p class="note">文字经本机转发给微软在线语音服务。无需 Azure 密钥，需联网。上一句/下一句按句跳转；在支持连续分页的网页上，读完会自动继续装载的下一篇。</p><p class="note">快捷键：<kbd>Alt+←</kbd> 上一句，<kbd>Alt+→</kbd> 下一句，<kbd>Space</kbd> 暂停/继续（输入框内不生效）。</p>
+</main><script src="config.js"></script><script src="reader.js"></script></body></html>

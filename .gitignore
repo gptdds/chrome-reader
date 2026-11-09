@@ -1,0 +1,23 @@
+# Python service
+.venv/
+__pycache__/
+*.pyc
+
+# Local secrets and generated extension config
+config.json
+extension/config.js
+
+# Chrome test profiles and local verification artifacts
+browser-test-profile/
+browser-state.json
+browser-verification.json
+follow-browser-state.json
+follow-verification.json
+verified-speech.json
+sample-xiaoxiao.mp3
+
+# Editor / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

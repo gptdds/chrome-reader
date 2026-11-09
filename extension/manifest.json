@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "晓晓朗读 · 本机 Edge TTS",
+  "description": "使用本机 Edge TTS 服务朗读网页或选中文字，无需 Azure 密钥。",
+  "version": "1.4.0",
+  "minimum_chrome_version": "116",
+  "permissions": ["activeTab", "scripting", "storage", "contextMenus", "sidePanel", "nativeMessaging"],
+  "host_permissions": ["http://127.0.0.1:18765/*"],
+  "action": {"default_title": "用晓晓朗读当前网页"},
+  "background": {"service_worker": "background.js"},
+  "side_panel": {"default_path": "reader.html"}
+}

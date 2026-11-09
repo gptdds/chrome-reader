@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>晓晓本地朗读</title>
+  <style>
+    :root { color-scheme: light; font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif; background: #f3f6fa; color: #172338; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 32px 18px; }
+    main { max-width: 820px; margin: 0 auto; background: white; border: 1px solid #dce4ef; border-radius: 18px; padding: clamp(22px, 5vw, 42px); box-shadow: 0 12px 36px #1723380b; }
+    h1 { margin: 0 0 10px; font-size: 28px; }
+    p { line-height: 1.7; }
+    .hint, #count { color: #5d6a7e; font-size: 14px; }
+    label { display: block; font-weight: 600; margin: 22px 0 9px; }
+    textarea, select { font: inherit; color: inherit; border: 1px solid #bac8da; border-radius: 8px; background: white; padding: 12px; }
+    textarea { width: 100%; min-height: 250px; resize: vertical; line-height: 1.8; }
+    textarea:focus, select:focus { outline: 3px solid #d7e7ff; border-color: #2866c7; }
+    #count { text-align: right; margin: 6px 0 0; }
+    .settings { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    select { width: 100%; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+    button, .download { font: inherit; font-weight: 600; border: 1px solid #c4d0e0; border-radius: 8px; background: #f8fafc; color: #183451; padding: 11px 17px; cursor: pointer; text-decoration: none; }
+    button.primary, button[data-speed][aria-pressed="true"] { background: #2461c1; border-color: #2461c1; color: white; }
+    #speedButtons { gap: 8px; margin-top: 14px; }
+    #speedButtons button { padding: 7px 14px; }
+    button:disabled, .download[aria-disabled="true"] { opacity: .45; cursor: default; pointer-events: none; }
+    button:focus-visible, a:focus-visible { outline: 3px solid #a9ccff; outline-offset: 3px; }
+    audio { width: 100%; margin-top: 24px; }
+    #status { margin: 18px 0 0; padding: 13px 16px; border-radius: 8px; background: #edf4ff; line-height: 1.7; overflow-wrap: anywhere; }
+    #status[data-error="true"] { color: #9b2323; background: #fff0ef; border: 1px solid #f0c7c3; }
+    .foot { margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 18px; }
+    @media (max-width: 520px) { .settings { grid-template-columns: 1fr; gap: 0; } body { padding: 14px 10px; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>晓晓本地朗读</h1>
+  <p class="hint">粘贴中文或其他文本，生成可播放、可下载的 MP3。语音合成需要网络连接，文本会发送至 Microsoft Edge 语音服务。</p>
+  <label for="text">朗读文本</label>
+  <textarea id="text" placeholder="在这里粘贴想听的文字……" spellcheck="false" aria-describedby="count"></textarea>
+  <p id="count">0 / 4000 字符</p>
+  <div class="settings">
+    <div><label for="voice">声音</label><select id="voice"><option value="zh-CN-XiaoxiaoNeural">晓晓 · 女声</option><option value="zh-CN-YunxiNeural">云希 · 男声</option></select></div>
+    <div><label for="rate">播放倍速 · 立即生效</label><select id="rate"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1× · 正常</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="1.75">1.75×</option><option value="2">2×</option><option value="2.5">2.5×</option><option value="3">3×</option></select></div>
+  </div>
+  <div id="speedButtons" class="actions" aria-label="快捷倍速"><button type="button" data-speed="1" aria-pressed="true">1×</button><button type="button" data-speed="1.25" aria-pressed="false">1.25×</button><button type="button" data-speed="1.5" aria-pressed="false">1.5×</button><button type="button" data-speed="2" aria-pressed="false">2×</button><button type="button" data-speed="3" aria-pressed="false">3×</button></div>
+  <div class="actions">
+    <button id="generate" class="primary" disabled>生成并朗读</button>
+    <button id="play" disabled>播放</button>
+    <button id="pause" disabled>暂停</button>
+    <button id="stop" disabled>停止</button>
+    <a id="download" class="download" download="晓晓朗读.mp3" aria-disabled="true">下载 MP3</a>
+  </div>
+  <audio id="audio" controls preload="metadata" aria-label="朗读音频"></audio>
+  <p id="status" role="status" aria-live="polite">正在连接本地朗读服务……</p>
+  <div class="foot"><button id="demo">播放示例音频</button><p class="hint">每次最多 4000 字符，合成最长等待 45 秒。停止按钮也可以取消正在等待的请求。</p></div>
+</main>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const text = $('text'), audio = $('audio'), status = $('status');
+let token = '', blobUrl = '', controller = null, generation = 0, busy = false;
+function message(value, isError = false) { status.textContent = value; status.dataset.error = String(isError); }
+function controls() {
+  $('generate').disabled = busy || !token;
+  $('demo').disabled = busy;
+  $('play').disabled = busy || !blobUrl;
+  $('pause').disabled = busy || !blobUrl || audio.paused;
+  $('stop').disabled = !busy && !blobUrl;
+  $('download').setAttribute('aria-disabled', String(!blobUrl || busy));
+}
+text.addEventListener('input', () => {
+  const count = Array.from(text.value).length;
+  $('count').textContent = `${count} / 4000 字符`;
+  $('count').style.color = count > 4000 ? '#b42323' : '';
+});
+async function responseError(response) {
+  try { const body = await response.json(); return body.error || `请求失败（HTTP ${response.status}）。`; }
+  catch (_) { return `本地服务返回异常响应（HTTP ${response.status}）。`; }
+}
+function installAudio(blob, filename) {
+  audio.pause();
+  audio.removeAttribute('src');
+  if (blobUrl) URL.revokeObjectURL(blobUrl);
+  blobUrl = URL.createObjectURL(blob);
+  audio.src = blobUrl;
+  $('download').href = blobUrl;
+  $('download').download = filename;
+  controls();
+}
+function setSpeed(value) {
+  const speed = Math.min(3, Math.max(0.5, Number(value) || 1));
+  $('rate').value = String(speed);
+  audio.playbackRate = speed;
+  audio.preservesPitch = true;
+  document.querySelectorAll('[data-speed]').forEach(button => button.setAttribute('aria-pressed', String(Number(button.dataset.speed) === speed)));
+  localStorage.setItem('xiaoxiaoPlaybackSpeed', String(speed));
+}
+$('rate').addEventListener('change', () => setSpeed($('rate').value));
+$('speedButtons').addEventListener('click', event => { const button = event.target.closest('[data-speed]'); if (button) setSpeed(button.dataset.speed); });
+const savedSpeed = localStorage.getItem('xiaoxiaoPlaybackSpeed');
+if (savedSpeed && Array.from($('rate').options).some(option => option.value === savedSpeed)) setSpeed(savedSpeed);
+async function playAudio() {
+  setSpeed($('rate').value);
+  try { await audio.play(); message('正在播放。'); }
+  catch (_) { message('音频已准备好。请点击播放；如果仍无法播放，请下载 MP3 后打开。', true); }
+  controls();
+}
+async function loadAudio(isDemo) {
+  const content = text.value;
+  if (!isDemo && (!content.trim() || Array.from(content).length > 4000)) {
+    message(!content.trim() ? '请先输入要朗读的文本。' : '文本超过 4000 字符，请缩短后重试。', true);
+    text.focus(); return;
+  }
+  audio.pause();
+  const current = ++generation;
+  const activeController = new AbortController();
+  controller = activeController;
+  busy = true;
+  controls();
+  message(isDemo ? '正在加载示例音频……' : '正在生成音频，请稍候（最多 45 秒）……');
+  const deadline = setTimeout(() => activeController.abort('timeout'), 50000);
+  try {
+    const options = { credentials: 'omit', signal: activeController.signal };
+    if (!isDemo) Object.assign(options, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ text: content, voice: $('voice').value, rate: '+0%' })
+    });
+    const response = await fetch(isDemo ? '/demo.mp3' : '/api/tts', options);
+    if (!response.ok) throw new Error(await responseError(response));
+    if (!(response.headers.get('Content-Type') || '').toLowerCase().startsWith('audio/mpeg')) throw new Error('服务没有返回 MP3 音频，请检查本地服务。');
+    const blob = await response.blob();
+    if (!blob.size) throw new Error('返回的音频为空，请重试。');
+    if (current !== generation) return;
+    busy = false;
+    installAudio(blob, isDemo ? '晓晓示例.mp3' : '晓晓朗读.mp3');
+    message('音频已生成，可以播放或下载。');
+    await playAudio();
+  } catch (err) {
+    if (current !== generation) return;
+    if (activeController.signal.aborted) message(activeController.signal.reason === 'timeout' ? '等待音频超时，请缩短文本或检查网络。' : '已停止。', activeController.signal.reason === 'timeout');
+    else message(err instanceof TypeError ? '无法连接本地服务。请运行 start.ps1，确认服务启动后重试。' : err.message, true);
+  } finally {
+    clearTimeout(deadline);
+    if (current === generation) { controller = null; busy = false; controls(); }
+  }
+}
+$('generate').addEventListener('click', () => loadAudio(false));
+$('demo').addEventListener('click', () => loadAudio(true));
+$('play').addEventListener('click', playAudio);
+$('pause').addEventListener('click', () => { audio.pause(); message('已暂停，点击播放继续。'); controls(); });
+$('stop').addEventListener('click', () => {
+  ++generation;
+  if (controller) controller.abort();
+  controller = null; busy = false;
+  audio.pause();
+  if (audio.readyState) audio.currentTime = 0;
+  message('已停止。'); controls();
+});
+audio.addEventListener('play', () => { if (!busy) message('正在播放。'); controls(); });
+audio.addEventListener('pause', controls);
+audio.addEventListener('ended', () => { message('播放完成，可以再次播放或下载。'); controls(); });
+audio.addEventListener('error', () => { if (audio.getAttribute('src')) message('音频无法播放，请重新生成或下载后打开。', true); controls(); });
+window.addEventListener('beforeunload', () => { if (controller) controller.abort(); if (blobUrl) URL.revokeObjectURL(blobUrl); });
+(async () => {
+  const configController = new AbortController();
+  const deadline = setTimeout(() => configController.abort(), 8000);
+  try {
+    const response = await fetch('/api/config', { credentials: 'omit', cache: 'no-store', signal: configController.signal });
+    if (!response.ok) throw new Error(await responseError(response));
+    const config = await response.json();
+    if (typeof config.token !== 'string' || !config.token) throw new Error('本地服务未配置 token，请检查 config.json。');
+    token = config.token;
+    message('服务已连接。粘贴文本后，点击“生成并朗读”。');
+    // The repo ships without demo audio; hide the button when no sample exists.
+    fetch('/demo.mp3', {method: 'HEAD', credentials: 'omit'}).then(r => { if (!r.ok) $('demo').remove(); }).catch(() => {});
+  } catch (err) { message(err.name === 'AbortError' ? '连接本地服务超时，请运行 start.ps1 后重试。' : (err instanceof TypeError ? '无法连接本地服务，请运行 start.ps1 后重试。' : err.message), true); }
+  finally { clearTimeout(deadline); controls(); }
+})();
+</script>
+</body>
+</html>
