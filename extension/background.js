@@ -1,5 +1,4 @@
 const MENU = 'xiaoxiao-read-selection';
-const EXTENSION_ID = 'bniddmggmkjihhheddfjnjeggfhojmgo';
 const NATIVE_HOST = 'com.xiaoxiao.reader';
 const START_TIMEOUT = 15000;
 let serviceStartPromise = null;
@@ -103,7 +102,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 });
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.action === 'startService') {
-    if (chrome.runtime.id !== EXTENSION_ID || sender.id !== EXTENSION_ID || sender.url !== chrome.runtime.getURL('reader.html')) {
+    if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL('reader.html')) {
       sendResponse({ok: false, code: 'FORBIDDEN', error: '仅允许本扩展的朗读侧栏启动本机服务。'});
       return;
     }
@@ -119,7 +118,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   if (message?.action === 'nextArticle') {
-    if (chrome.runtime.id !== EXTENSION_ID || sender.id !== EXTENSION_ID || sender.url !== chrome.runtime.getURL('reader.html')) {
+    if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL('reader.html')) {
       sendResponse({ok: false, error: '仅允许本扩展的朗读侧栏载入下一篇。'});
       return;
     }

@@ -13,8 +13,14 @@ import urllib.error
 import urllib.request
 
 BASE_DIR = Path(__file__).resolve().parent
-EXTENSION_ID = "bniddmggmkjihhheddfjnjeggfhojmgo"
-ALLOWED_ORIGIN = f"chrome-extension://{EXTENSION_ID}/"
+# Accept any of the known extension ids so a re-load keeps working even if
+# Chrome regenerates the id (path-based) or an older id is still installed.
+EXTENSION_IDS = frozenset((
+    "bniddmggmkjihhheddfjnjeggfhojmgo",
+    "dalmdgpohkfpclknkcfpeifdminlijic",
+    "bogojjhkpeiabadplnpfchgafbnekogd",
+))
+ALLOWED_ORIGINS = frozenset(f"chrome-extension://{i}/" for i in EXTENSION_IDS)
 HEALTH_URL = "http://127.0.0.1:18765/health"
 MAX_MESSAGE_BYTES = 4096
 START_TIMEOUT = 8.0
@@ -110,7 +116,7 @@ def handle_message(message: dict) -> dict:
 
 
 def serve(origin: str, source: BinaryIO, destination: BinaryIO) -> None:
-    if origin != ALLOWED_ORIGIN:
+    if origin not in ALLOWED_ORIGINS:
         write_message(destination, {"ok": False, "error": "不允许此扩展调用本机启动程序。"})
         return
     try:

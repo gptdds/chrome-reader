@@ -68,24 +68,11 @@ function hardSplit(sentence) {
   }
   return parts;
 }
-function splitText(text, max = 1400) {
-  const parts = [];
-  for (let start = 0; start < text.length;) {
-    let end = Math.min(start + max, text.length);
-    if (end < text.length) {
-      const area = text.slice(start, end);
-      const boundary = Math.max(area.lastIndexOf('\n'), area.lastIndexOf('。'), area.lastIndexOf('！'), area.lastIndexOf('？'));
-      if (boundary > max / 3) end = start + boundary + 1;
-      const code = text.charCodeAt(end - 1);
-      if (code >= 0xD800 && code <= 0xDBFF) end--;
-    }
-    const piece = text.slice(start, end);
-    const left = piece.search(/\S/u);
-    if (left >= 0) parts.push({text: piece.trim(), start: start + left});
-    start = end;
-  }
-    const part = parts[parts.length - 1];
-    if (part && part.text.length > max) parts.splice(parts.length - 1, 1, ...hardSplit(part));
+function splitText(text) {
+  const units = [];
+  for (const sentence of sentenceList(text)) {
+    if (sentence.text.length <= 1400) units.push(sentence);
+    else units.push(...hardSplit(sentence));
   }
   return units;
 }

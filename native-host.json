@@ -4,6 +4,8 @@
     "path": "C:\\Users\\nj\\AppData\\Local\\XiaoxiaoReader\\native-host.cmd",
     "type": "stdio",
     "allowed_origins": [
-        "chrome-extension://bniddmggmkjihhheddfjnjeggfhojmgo/"
+        "chrome-extension://bniddmggmkjihhheddfjnjeggfhojmgo/",
+        "chrome-extension://dalmdgpohkfpclknkcfpeifdminlijic/",
+        "chrome-extension://bogojjhkpeiabadplnpfchgafbnekogd/"
     ]
 }
