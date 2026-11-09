@@ -13,7 +13,7 @@ import urllib.error
 import urllib.request
 
 BASE_DIR = Path(__file__).resolve().parent
-EXTENSION_ID = "dalmdgpohkfpclknkcfpeifdminlijic"
+EXTENSION_ID = "bniddmggmkjihhheddfjnjeggfhojmgo"
 ALLOWED_ORIGIN = f"chrome-extension://{EXTENSION_ID}/"
 HEALTH_URL = "http://127.0.0.1:18765/health"
 MAX_MESSAGE_BYTES = 4096
