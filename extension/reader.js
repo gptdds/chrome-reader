@@ -297,6 +297,26 @@ async function play(startAt = 0) {
     pending.clear();
   }
 }
+// Locate the sentence containing the caret so playback can start anywhere.
+function sentenceIndexAt(offset) {
+  for (let i = 0; i < currentParts.length; i++) {
+    const part = currentParts[i];
+    if (offset < part.start + part.text.length) return i;
+  }
+  return Math.max(0, currentParts.length - 1);
+}
+function playFromCaret() {
+  if (serviceStartPromise) { status('本机语音服务正在启动，请等待就绪后再点击播放。'); return; }
+  // Recompute so caret offsets always match the current textarea content.
+  currentParts = splitText($('text').value);
+  if (!currentParts.length) { status('请先读取网页或粘贴文字。', true); return; }
+  const field = $('text');
+  const caret = Math.max(0, Math.min(field.selectionStart || 0, field.value.length));
+  const index = sentenceIndexAt(caret);
+  const preview = currentParts[index].text;
+  status(`将从第 ${index + 1} / ${currentParts.length} 句开始：${preview.slice(0, 24)}${preview.length > 24 ? '…' : ''}`);
+  play(index);
+}
 function jump(offset) {
   if (!active || !currentParts.length) return;
   const target = currentIndex + offset;
@@ -335,6 +355,7 @@ $('play').addEventListener('click', () => play());
 $('previous').addEventListener('click', () => jump(-1));
 $('next').addEventListener('click', () => jump(1));
 $('loadNext').addEventListener('click', loadNextArticle);
+$('playFrom').addEventListener('click', playFromCaret);
 document.addEventListener('keydown', event => {
   const target = event.target;
   const typing = target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
