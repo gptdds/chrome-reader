@@ -1,7 +1,7 @@
-﻿# Windows PowerShell 5.1; current-user registration, no administrator required.
+# Windows PowerShell 5.1; current-user registration, no administrator required.
 $ErrorActionPreference = 'Stop'
 $HostName = 'com.xiaoxiao.reader'
-$ExtensionId = 'dalmdgpohkfpclknkcfpeifdminlijic'
+$ExtensionId = 'bniddmggmkjihhheddfjnjeggfhojmgo'
 function Get-DirectoryTarget([string]$Path) {
     $Item = Get-Item -LiteralPath $Path -Force
     $Target = $Item.FullName

@@ -1,9 +1,9 @@
 {
-    "name":  "com.xiaoxiao.reader",
-    "description":  "Start the local Xiaoxiao Reader speech service",
-    "path":  "C:\\Users\\nj\\AppData\\Local\\XiaoxiaoReader\\native-host.cmd",
-    "type":  "stdio",
-    "allowed_origins":  [
-                            "chrome-extension://dalmdgpohkfpclknkcfpeifdminlijic/"
-                        ]
+    "name": "com.xiaoxiao.reader",
+    "description": "Start the local Xiaoxiao Reader speech service",
+    "path": "C:\\Users\\nj\\AppData\\Local\\XiaoxiaoReader\\native-host.cmd",
+    "type": "stdio",
+    "allowed_origins": [
+        "chrome-extension://bniddmggmkjihhheddfjnjeggfhojmgo/"
+    ]
 }

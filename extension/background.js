@@ -1,5 +1,5 @@
 const MENU = 'xiaoxiao-read-selection';
-const EXTENSION_ID = 'dalmdgpohkfpclknkcfpeifdminlijic';
+const EXTENSION_ID = 'bniddmggmkjihhheddfjnjeggfhojmgo';
 const NATIVE_HOST = 'com.xiaoxiao.reader';
 const START_TIMEOUT = 15000;
 let serviceStartPromise = null;

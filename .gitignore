@@ -21,3 +21,8 @@ sample-xiaoxiao.mp3
 .idea/
 Thumbs.db
 .DS_Store
+
+# extension signing key (never commit)
+extension/.key.pem
+*.pem
+.keyid.txt
