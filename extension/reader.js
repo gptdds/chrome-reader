@@ -339,8 +339,8 @@ document.addEventListener('keydown', event => {
   const target = event.target;
   const typing = target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
   if (typing) return;
-  if (event.altKey && event.key === 'ArrowLeft') { event.preventDefault(); jump(-1); }
-  else if (event.altKey && event.key === 'ArrowRight') { event.preventDefault(); jump(1); }
+  if (event.key === 'ArrowLeft' && !event.ctrlKey && !event.metaKey && !event.shiftKey) { event.preventDefault(); jump(-1); }
+  else if (event.key === 'ArrowRight' && !event.ctrlKey && !event.metaKey && !event.shiftKey) { event.preventDefault(); jump(1); }
   else if (event.key === ' ' && active) { event.preventDefault(); $('pause').click(); }
 });
 $('stop').addEventListener('click', () => { stop(); status('已停止'); });
