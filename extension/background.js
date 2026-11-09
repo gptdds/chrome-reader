@@ -61,6 +61,52 @@ async function load(tab, selectionOnly = false, fullPage = false) {
 function sameOrigin(next, current) {
   try { return new URL(next).origin === new URL(current).origin; } catch { return false; }
 }
+// Read-in-new-page mode: open the same URL in a fresh tab (identical layout
+// by construction), capture and read there, leaving the original tab alone.
+let newTab = null;
+async function loadInNewTab(tab, requestedUrl) {
+  // Prefer the article's own source URL: the panel always knows it, so this
+  // never depends on which window/tab currently has focus.
+  const targetUrl = (requestedUrl && /^https?:/.test(requestedUrl)) ? requestedUrl
+    : (tab?.url && /^https?:/.test(tab.url) ? tab.url : null);
+  if (!targetUrl) {
+    throw new Error('请先读取一个普通网页，再使用新页面朗读。');
+  }
+  const {captureScope} = await chrome.storage.local.get('captureScope');
+  const fullPage = captureScope === 'full';
+  let target = newTab;
+  if (!target || target.url !== targetUrl) {
+    if (target) chrome.tabs.remove(target.tabId).catch(() => {});
+    target = null;
+    const created = await chrome.tabs.create({url: targetUrl, active: true});
+    target = {tabId: created.id, url: targetUrl};
+    await new Promise(resolve => {
+      const until = Date.now() + 15000;
+      const check = () => chrome.tabs.get(created.id).then(info => {
+        if (info.status === 'complete' || Date.now() > until) resolve();
+        else setTimeout(check, 150);
+      }).catch(() => resolve());
+      check();
+    });
+    await new Promise(r => setTimeout(r, 400));
+  }
+  newTab = target;
+  try {
+    await chrome.scripting.executeScript({target: {tabId: target.tabId}, files: ['content.js']});
+    const data = await chrome.tabs.sendMessage(target.tabId, {action: 'xiaoxiao-capture', fullPage});
+    if (data?.error) throw new Error(data.error);
+    if (!data?.text?.trim()) throw new Error('新页面没有读取到正文。');
+    await chrome.storage.local.set({article: {...data, id: crypto.randomUUID(),
+      requestedAt: Date.now(), sourceTabId: target.tabId}});
+    return true;
+  } catch (error) {
+    // A dead or unreadable clone is closed; the original tab was never touched.
+    chrome.tabs.remove(target.tabId).catch(() => {});
+    newTab = null;
+    throw error;
+  }
+}
+
 // For sites with pagination or a next-article link, preload the following
 // article so the reader can chain it after the current one finishes.
 async function loadNext(tab) {
@@ -123,6 +169,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     chrome.runtime.sendMessage({action: 'xiaoxiao-start-index', index: message.index}).catch(() => {});
     sendResponse({ok: true});
     return;
+  }
+  if (message?.action === 'readInNewTab') {
+    if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL('reader.html')) {
+      sendResponse({ok: false, error: '仅允许本扩展的朗读侧栏新开页面朗读。'});
+      return;
+    }
+    (async () => {
+      const [tab] = await chrome.tabs.query({active: true, lastFocusedWindow: true});
+      await loadInNewTab(tab, typeof message.url === 'string' ? message.url : '');
+      sendResponse({ok: true});
+    })().catch(error => sendResponse({ok: false, error: error.message}));
+    return true;
   }
   if (message?.action === 'nextArticle') {
     if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL('reader.html')) {

@@ -364,6 +364,13 @@ $('play').addEventListener('click', () => play());
 $('previous').addEventListener('click', () => jump(-1));
 $('next').addEventListener('click', () => jump(1));
 $('loadNext').addEventListener('click', loadNextArticle);
+async function readInNewTab() {
+  status('正在新页面打开并读取当前网页…');
+  const response = await chrome.runtime.sendMessage({action: 'readInNewTab', url: source?.source || ''}).catch(error => ({error: error.message}));
+  if (response?.ok === true) { status('已在新页面载入本文，朗读与高亮都在新页面进行，原页面未改动。'); return; }
+  status(response?.error || '新页面朗读失败。', true);
+}
+$('readNewTab').addEventListener('click', readInNewTab);
 $('playFrom').addEventListener('click', playFromCaret);
 document.addEventListener('keydown', event => {
   const target = event.target;
