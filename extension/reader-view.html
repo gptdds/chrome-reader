@@ -21,19 +21,5 @@ figure{margin:1em 0;text-align:center}
 <div id="rv-wait">正在准备朗读视图…</div>
 <article id="rv-root" hidden></article>
 <script src="content.js"></script>
-<script>
-(async () => {
-  const {readerView} = await chrome.storage.local.get('readerView');
-  const root = document.getElementById('rv-root');
-  const wait = document.getElementById('rv-wait');
-  if (!readerView || !readerView.html) {
-    wait.textContent = '没有可显示的内容。请先在侧栏读取网页，再点“新页面朗读”。';
-    return;
-  }
-  root.innerHTML = readerView.html;
-  document.title = readerView.title || '朗读视图';
-  root.hidden = false;
-  wait.remove();
-})();
-</script>
+<script src="reader-view.js"></script>
 </body></html>

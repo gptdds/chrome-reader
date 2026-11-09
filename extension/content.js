@@ -140,6 +140,7 @@
   }
 
   function capture(selectionOnly, fullPage) {
+    if (window.__xiaoxiaoReaderReady === false) throw new Error('新页面尚未就绪。');
     const selection = window.getSelection();
     let selectedRange = null;
     if (selection && selection.rangeCount && !selection.isCollapsed) {
