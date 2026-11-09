@@ -378,6 +378,27 @@
     renderer = 'overlay';
   }
 
+  // Immersive cover: a full-viewport dim layer with holes punched over the
+  // spoken text. Pure paint (clip-path on a fixed layer) — layout untouched.
+  function paintCover(rects) {
+    ensureOverlay();
+    overlayRoot.replaceChildren();
+    const view = viewport();
+    const holes = [];
+    for (const rect of rects) {
+      const left = Math.max(rect.left, view.left), top = Math.max(rect.top, view.top);
+      const right = Math.min(rect.right, view.left + view.width), bottom = Math.min(rect.bottom, view.top + view.height);
+      if (right <= left || bottom <= top) continue;
+      holes.push(`M${left},${top} H${right} V${bottom} H${left} Z`);
+    }
+    if (!holes.length) holes.push('M0,0 H0 V0 H0 Z');
+    const dim = document.createElement('div');
+    const path = `M${view.left},${view.top} H${view.left + view.width} V${view.top + view.height} H${view.left} Z ` + holes.join(' ');
+    dim.style.cssText = `position:absolute;inset:0;background:rgba(8,12,20,.86);clip-path:path(evenodd, '${path.trim()}');`;
+    overlayRoot.appendChild(dim);
+    renderer = 'cover';
+  }
+
   function viewport() {
     const visual = window.visualViewport;
     return {left: visual?.offsetLeft || 0, top: visual?.offsetTop || 0,
@@ -512,6 +533,8 @@
     // Normally a visual-line range has only one line. If unusual multi-column or
     // bidi layout violates that assumption, overlay only its matching line rects.
     paint(chosen.ranges, rects, clippedLine);
+    if (active.mode === 'cover') paintCover(rects);
+    else if (renderer === 'cover') { overlay?.remove(); overlay = overlayRoot = null; }
     active.rects = rects;
     active.error = null;
     if (follow) followRange(chosen, rects);
@@ -567,7 +590,7 @@
       throw new Error('end 必须是有效的 UTF-16 结束偏移。');
     }
     const mode = message.mode || 'character';
-    if (!['character', 'line', 'paragraph'].includes(mode)) throw new Error('未知高亮模式。');
+    if (!['character', 'line', 'paragraph', 'cover'].includes(mode)) throw new Error('未知高亮模式。');
     // end is an optional speech-boundary hint. Mode determines the actual range:
     // one Unicode code point, the visual line, or the captured paragraph.
     if (!active || active.index !== message.index || active.mode !== mode) {
